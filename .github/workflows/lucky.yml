@@ -2,8 +2,34 @@ name: 럭키
 
 on:
   workflow_call:
+    inputs:
+      run_id:
+        required: true
+        type: string
+      sha:
+        required: false
+        type: string
+      branch:
+        required: false
+        type: string
+      issue_number:
+        required: false
+        type: string
+      pr_number:
+        required: false
+        type: string
+      requested_user:
+        required: true
+        type: string
+      comment_body:
+        required: true
+        type: string
     secrets:
       ANTHROPIC_API_KEY:
+        required: true
+      LUCKY_GITHUB_TOKEN:
+        required: true
+      ACTION_GITHUB_TOKEN:
         required: true
 
 jobs:
@@ -15,16 +41,20 @@ jobs:
       issues: write
 
     steps:
-      - name: 대상 레포지토리 체크아웃
+      - name: 대상 저장소 체크아웃
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.ACTION_GITHUB_TOKEN }}
 
-      - name: 럭키 설정 가져오기
+      - name: 럭키 저장소 체크아웃
         uses: actions/checkout@v4
         with:
           repository: qodot/lucky
           path: .lucky
           sparse-checkout: |
             AGENTS.md
+            AGENTS/
 
       - name: AGENTS.md 통합
         run: |
@@ -41,7 +71,29 @@ jobs:
             cat AGENTS.md.original >> AGENTS.md
           fi
 
-      - name: Claude Code 실행
+      - name: 럭키 실행
+        id: run_lucky
         uses: anthropics/claude-code-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.LUCKY_GITHUB_TOKEN }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.LUCKY_GITHUB_TOKEN }}
+          prompt: |
+            **답변 하기 직전**
+              - **먼저 내가 누구인지 생각한다.**
+              - **./AGENTS.md 를 읽고 지침을 따른다.**
+            **작업 완료 후**
+              - **댓글을 반드시 남긴다.**
+
+            사용자 요청
+              - ${{ inputs.comment_body }}
+            요청 메타 정보
+              - 이슈 번호: ${{ inputs.issue_number || '없음' }}
+              - PR 번호: ${{ inputs.pr_number || '없음' }}
+            댓글 추가 방법
+              - 이슈: gh issue comment <번호> -b "내용"
+              - PR: gh pr comment <번호> -b "내용"
+          claude_args: |
+            --dangerously-skip-permissions
+            --allowedTools "Bash(gh pr comment:*),Bash(gh issue comment:*),Bash(git:*)"

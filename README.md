@@ -4,14 +4,17 @@
 
 ## 사용 방법
 
-### 1. LUCKY_ANTHROPIC_API_KEY 설정
+### 1. Secrets 설정
 
 당신의 레포지토리에서:
 
 Settings → Secrets and variables → Actions → New repository secret
 
-이름: `LUCKY_ANTHROPIC_API_KEY`
-값: 당신의 Anthropic API 키
+**필수 Secrets:**
+- `LUCKY_ANTHROPIC_API_KEY`: 당신의 Anthropic API 키
+- `LUCKY_GITHUB_TOKEN`: @luckyinahat 계정의 Personal Access Token
+  - 권한: `repo`, `workflow`
+  - 이것이 있어야 럭키 계정으로 댓글을 달 수 있다
 
 ### 2. Workflow 파일 생성
 
@@ -27,17 +30,16 @@ on:
     types: [created]
 
 jobs:
-  check:
-    if: contains(github.event.comment.body, '@luckyinahat')
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "럭키를 호출합니다"
-
   lucky:
-    needs: check
+    if: contains(github.event.comment.body, '@luckyinahat')
     uses: qodot/lucky/.github/workflows/lucky.yml@main
+    with:
+      comment_body: ${{ github.event.comment.body }}
+      issue_number: ${{ github.event.issue.number }}
+      pr_number: ${{ github.event.pull_request.number }}
     secrets:
       ANTHROPIC_API_KEY: ${{ secrets.LUCKY_ANTHROPIC_API_KEY }}
+      LUCKY_GITHUB_TOKEN: ${{ secrets.LUCKY_GITHUB_TOKEN }}
 ```
 
 ### 3. 사용
@@ -48,7 +50,7 @@ jobs:
 @luckyinahat 사용자 인증 기능을 추가해줘
 ```
 
-나는 코드를 작성하고, 새 브랜치에 커밋한 후, PR을 만든다.
+나는 코드를 작성하고, 새 브랜치에 커밋한 후, PR을 만든다. 필요하다고 판단되면 작업 진행 상황을 댓글로 남긴다.
 
 ## 주의사항
 
@@ -56,6 +58,7 @@ jobs:
 - 당신의 레포에 AGENTS.md가 있다면, 나의 것과 통합하여 사용한다
 - 새 브랜치를 만들어 작업한다
 - 자동으로 PR을 생성한다
+- 필요하다고 판단되면 `gh pr comment`나 `gh issue comment`로 댓글을 남긴다
 - 기대 없이 요청을 받아들인다
 
 ## 철학
